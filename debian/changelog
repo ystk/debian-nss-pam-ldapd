@@ -1,3 +1,64 @@
+nss-pam-ldapd (0.7.15+squeeze4) squeeze-security; urgency=low
+
+  * fix FTBFS on kFreeBSD (see #690319)
+  * debian/nslcd.config: handle options that are specified multiple times
+    in nslcd.conf consistently (closes: #700971)
+
+ -- Arthur de Jong <adejong@debian.org>  Sun, 12 May 2013 12:00:00 +0200
+
+nss-pam-ldapd (0.7.15+squeeze3) stable-security; urgency=high
+
+  * SECURITY FIX: Garth Mollett discovered that a file descriptor overflow
+                  issue in the use of FD_SET() in nss-pam-ldapd can lead
+                  to a stack-based buffer overflow (CVE-2013-0288)
+                  this bug has been fixed by extra range checking before
+                  calling FD_SET() (backported from 0.7.18) (closes: #690319)
+
+ -- Arthur de Jong <adejong@debian.org>  Fri, 15 Feb 2013 23:00:00 +0100
+
+nss-pam-ldapd (0.7.15+squeeze2) stable; urgency=low
+
+  * support larger gecos values (closes: #640781) (backported from 0.7.17)
+  * fix two possible NULL pointer dereferences (backported from 0.7.17)
+  * increase buffer used for pam_authz_search as suggested by Chris J Arges
+    (backported from 0.7.16)
+  * fix logging of invalid pam_authz_search value (LP: #951343) (backported
+    from 0.7.16)
+  * implement proper range checking of numeric values returned from LDAP
+    (thanks Jakub Hrozek) (backported from 0.7.16)
+
+ -- Arthur de Jong <adejong@debian.org>  Fri, 21 Sep 2012 10:00:00 +0200
+
+nss-pam-ldapd (0.7.15+squeeze1) stable; urgency=low
+
+  * fix an issue where changes in /etc/nsswitch.conf were not correctly
+    picked up and could lead to lookups being disabled on upgrade
+    (closes: #645599)
+  * fix an issue with detecting the uid of the calling process
+  * fix a problem in the disconnect logic code
+
+ -- Arthur de Jong <adejong@debian.org>  Fri, 20 Jan 2012 15:30:00 +0100
+
+nss-pam-ldapd (0.7.15) stable; urgency=low
+
+  * in debconf, treat the "hard" value for tls_reqcert as if it was "demand"
+    (closes: #642347)
+
+ -- Arthur de Jong <adejong@debian.org>  Sun, 02 Oct 2011 11:15:00 +0200
+
+nss-pam-ldapd (0.7.14) stable; urgency=low
+
+  * log correct error from ldap_abandon()
+  * fix problem with partial attribute name matches in DN (thanks Timothy
+    White)
+  * handle expressions where some variable would expand to NULL
+  * make buffer sizes consistent and grow all buffers holding string
+    representations of numbers to be able to hold 64-bit numbers
+  * fix a problem with uninitialised memory while parsing the tls_ciphers
+    option (closes: #638872)
+
+ -- Arthur de Jong <adejong@debian.org>  Fri, 18 Sep 2011 20:00:00 +0200
+
 nss-pam-ldapd (0.7.13) unstable; urgency=low
 
   * fix handling of idle_timelimit option

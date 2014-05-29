@@ -5,7 +5,7 @@
 
    Copyright (C) 1997-2006 Luke Howard
    Copyright (C) 2006 West Consulting
-   Copyright (C) 2006, 2007, 2008, 2009, 2010 Arthur de Jong
+   Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011 Arthur de Jong
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
@@ -181,7 +181,7 @@ static int do_write_group(
 /* return the list of members */
 static const char **getmembers(MYLDAP_ENTRY *entry,MYLDAP_SESSION *session)
 {
-  char buf[20];
+  char buf[256];
   int i;
   const char **values;
   SET *set;
@@ -251,10 +251,17 @@ static int write_group(TFILE *fp,MYLDAP_ENTRY *entry,const char *reqname,
     }
     for (numgids=0;(gidvalues[numgids]!=NULL)&&(numgids<MAXGIDS_PER_ENTRY);numgids++)
     {
-      gids[numgids]=(gid_t)strtol(gidvalues[numgids],&tmp,0);
+      errno=0;
+      gids[numgids]=strtogid(gidvalues[numgids],&tmp,0);
       if ((*(gidvalues[numgids])=='\0')||(*tmp!='\0'))
       {
         log_log(LOG_WARNING,"group entry %s contains non-numeric %s value",
+                            myldap_get_dn(entry),attmap_group_gidNumber);
+        return 0;
+      }
+      else if (errno!=0)
+      {
+        log_log(LOG_WARNING,"group entry %s contains too large %s value",
                             myldap_get_dn(entry),attmap_group_gidNumber);
         return 0;
       }

@@ -2,7 +2,7 @@
    pam.c - pam processing routines
 
    Copyright (C) 2009 Howard Chu
-   Copyright (C) 2009, 2010 Arthur de Jong
+   Copyright (C) 2009, 2010, 2012 Arthur de Jong
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
@@ -107,8 +107,11 @@ static int validate_user(MYLDAP_SESSION *session,char *userdn,size_t userdnsz,
       /* get the username from the uid attribute */
       values=myldap_get_values(entry,attmap_passwd_uid);
       if ((values==NULL)||(values[0]==NULL))
+      {
         log_log(LOG_WARNING,"\"%s\": DN %s is missing a %s attribute",
                             username,userdn,attmap_passwd_uid);
+        return -1;
+      }
       value=values[0];
     }
     /* check the username */
@@ -230,7 +233,7 @@ static const char *autzsearch_var_get(const char *name,void *expander_attr)
 
 static int try_autzsearch(MYLDAP_SESSION *session,DICT *dict,const char *searchfilter)
 {
-  char filter_buffer[1024];
+  char filter_buffer[4096];
   MYLDAP_SEARCH *search;
   MYLDAP_ENTRY *entry;
   static const char *attrs[2];
@@ -239,7 +242,7 @@ static int try_autzsearch(MYLDAP_SESSION *session,DICT *dict,const char *searchf
   if (expr_parse(searchfilter,filter_buffer,sizeof(filter_buffer),
                  autzsearch_var_get,(void *)dict)==NULL)
   {
-    log_log(LOG_ERR,"pam_authz_search \"%s\" is invalid",searchfilter);
+    log_log(LOG_ERR,"invalid pam_authz_search \"%s\"",searchfilter);
     return -1;
   }
   log_log(LOG_DEBUG,"trying pam_authz_search \"%s\"",filter_buffer);

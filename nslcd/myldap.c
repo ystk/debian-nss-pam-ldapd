@@ -581,7 +581,7 @@ static void do_close(MYLDAP_SESSION *session)
           log_log(LOG_DEBUG,"ldap_abandon()");
           if (ldap_abandon(session->searches[i]->session->ld,session->searches[i]->msgid))
           {
-            if (ldap_get_option(session->ld,LDAP_OPT_ERROR_NUMBER,&rc)==LDAP_SUCCESS)
+            if (ldap_get_option(session->ld,LDAP_OPT_ERROR_NUMBER,&rc)!=LDAP_SUCCESS)
               rc=LDAP_OTHER;
             log_log(LOG_WARNING,"ldap_abandon() failed to abandon search: %s",ldap_err2string(rc));
           }
@@ -1198,7 +1198,7 @@ MYLDAP_ENTRY *myldap_get_entry(MYLDAP_SEARCH *search,int *rcp)
         }
         /* close connection on some connection problems */
         if ((rc==LDAP_UNAVAILABLE)||(rc==LDAP_SERVER_DOWN)||(rc==LDAP_SUCCESS)||
-            (rc==LDAP_TIMELIMIT_EXCEEDED)|(rc==LDAP_OPERATIONS_ERROR)||
+            (rc==LDAP_TIMELIMIT_EXCEEDED)||(rc==LDAP_OPERATIONS_ERROR)||
             (rc==LDAP_PROTOCOL_ERROR))
         {
           do_close(search->session);
@@ -1448,9 +1448,10 @@ static const char *find_rdn_value(char **exploded_rdn,const char *attr)
       /* nothing here */;
     /* ensure that we found an equals sign now */
     if (exploded_rdn[i][j]!='=')
+      continue;
     j++;
     /* skip more spaces */
-    for (j++;isspace(exploded_rdn[i][j]);j++)
+    for (;isspace(exploded_rdn[i][j]);j++)
       /* nothing here */;
     /* ensure that we're not at the end of the string */
     if (exploded_rdn[i][j]=='\0')
