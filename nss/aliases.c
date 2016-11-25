@@ -2,7 +2,7 @@
    aliases.c - NSS lookup functions for aliases database
 
    Copyright (C) 2006 West Consulting
-   Copyright (C) 2006, 2007, 2008 Arthur de Jong
+   Copyright (C) 2006, 2007, 2008, 2010, 2012, 2013 Arthur de Jong
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
@@ -28,48 +28,55 @@
 #include "prototypes.h"
 #include "common.h"
 
-static enum nss_status read_aliasent(
-        TFILE *fp,struct aliasent *result,
-        char *buffer,size_t buflen,int *errnop)
+/* read an alias entry from the stream */
+static nss_status_t read_aliasent(TFILE *fp, struct aliasent *result,
+                                  char *buffer, size_t buflen, int *errnop)
 {
-  int32_t tmpint32,tmp2int32,tmp3int32;
-  size_t bufptr=0;
+  int32_t tmpint32, tmp2int32, tmp3int32;
+  size_t bufptr = 0;
+  memset(result, 0, sizeof(struct aliasent));
   /* read the name of the alias */
-  READ_BUF_STRING(fp,result->alias_name);
+  READ_BUF_STRING(fp, result->alias_name);
   /* read the members */
-  READ_BUF_STRINGLIST(fp,result->alias_members);
+  READ_BUF_STRINGLIST(fp, result->alias_members);
   /* tmp3int32 holds the number of entries read */
-  result->alias_members_len=tmp3int32;
+  result->alias_members_len = tmp3int32;
   /* fill in remaining gaps in struct */
-  result->alias_local=0;
+  result->alias_local = 0;
   /* we're done */
   return NSS_STATUS_SUCCESS;
 }
 
-enum nss_status _nss_ldap_getaliasbyname_r(
-        const char *name,struct aliasent *result,
-        char *buffer,size_t buflen,int *errnop)
+/* get an alias entry by name */
+nss_status_t _nss_ldap_getaliasbyname_r(const char *name,
+                                        struct aliasent *result,
+                                        char *buffer, size_t buflen,
+                                        int *errnop)
 {
-  NSS_BYNAME(NSLCD_ACTION_ALIAS_BYNAME,
-             name,
-             read_aliasent(fp,result,buffer,buflen,errnop));
+  NSS_GETONE(NSLCD_ACTION_ALIAS_BYNAME,
+             WRITE_STRING(fp, name),
+             read_aliasent(fp, result, buffer, buflen, errnop));
 }
 
 /* thread-local file pointer to an ongoing request */
-static __thread TFILE *aliasentfp;
+static TLS TFILE *aliasentfp;
 
-enum nss_status _nss_ldap_setaliasent(void)
+/* start a request to read all aliases */
+nss_status_t _nss_ldap_setaliasent(void)
 {
   NSS_SETENT(aliasentfp);
 }
 
-enum nss_status _nss_ldap_getaliasent_r(struct aliasent *result,char *buffer,size_t buflen,int *errnop)
+/* read a single alias entry from the stream */
+nss_status_t _nss_ldap_getaliasent_r(struct aliasent *result,
+                                     char *buffer, size_t buflen, int *errnop)
 {
-  NSS_GETENT(aliasentfp,NSLCD_ACTION_ALIAS_ALL,
-             read_aliasent(aliasentfp,result,buffer,buflen,errnop));
+  NSS_GETENT(aliasentfp, NSLCD_ACTION_ALIAS_ALL,
+             read_aliasent(aliasentfp, result, buffer, buflen, errnop));
 }
 
-enum nss_status _nss_ldap_endaliasent(void)
+/* close the stream opened with setaliasent() above */
+nss_status_t _nss_ldap_endaliasent(void)
 {
   NSS_ENDENT(aliasentfp);
 }

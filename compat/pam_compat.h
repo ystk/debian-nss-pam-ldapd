@@ -1,7 +1,7 @@
 /*
    pam_compat.h - provide a replacement definitions for some pam functions
 
-   Copyright (C) 2009, 2010 Arthur de Jong
+   Copyright (C) 2009, 2010, 2011, 2012 Arthur de Jong
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
@@ -37,34 +37,46 @@
 #include <security/pam_modutil.h>
 #endif /* HAVE_SECURITY_PAM_MODUTIL_H */
 
+/* find value of PAM_AUTHTOK_RECOVERY_ERR */
+#ifndef PAM_AUTHTOK_RECOVERY_ERR
+#ifdef PAM_AUTHTOK_RECOVER_ERR
+#define PAM_AUTHTOK_RECOVERY_ERR PAM_AUTHTOK_RECOVER_ERR
+#else
+#define PAM_AUTHTOK_RECOVERY_ERR 21 /* not defined anywhere */
+#endif
+#endif /* not PAM_AUTHTOK_RECOVERY_ERR */
+
 /* define our own replacement pam_get_authtok() if it wasn't found */
 #ifndef HAVE_PAM_GET_AUTHTOK
-int pam_get_authtok(pam_handle_t *pamh,int item,const char **authtok,const char *prompt);
+int pam_get_authtok(pam_handle_t *pamh, int item, const char **authtok,
+                    const char *prompt);
 #endif /* not HAVE_PAM_GET_AUTHTOK */
 
 /* replace pam_prompt() if needed */
 #ifndef HAVE_PAM_PROMPT
-int pam_prompt(pam_handle_t *pamh,int style,char **response,const char *format,...)
-  LIKE_PRINTF(4,5);
+int pam_prompt(pam_handle_t *pamh, int style, char **response,
+               const char *format, ...)
+  LIKE_PRINTF(4, 5);
 #endif /* not HAVE_PAM_PROMPT */
 
 /* provide pam_info() if needed */
 #ifndef pam_info
-#define pam_info(pamh,format...) \
-            pam_prompt(pamh,PAM_TEXT_INFO,NULL,##format)
+#define pam_info(pamh, format...)                                           \
+  pam_prompt(pamh, PAM_TEXT_INFO, NULL, ##format)
 #endif /* not pam_info */
 
 /* provide pam_error() if needed */
 #ifndef pam_error
-#define pam_error(pamh,format...) \
-            pam_prompt(pamh,PAM_ERROR_MSG,NULL,##format)
+#define pam_error(pamh, format...)                                          \
+  pam_prompt(pamh, PAM_ERROR_MSG, NULL, ##format)
 #endif /* not pam_error */
 
 /* fall back to using getpwnam() if pam_modutil_getpwnam() isn't defined */
 #ifndef HAVE_PAM_MODUTIL_GETGWNAM
 #include <sys/types.h>
 #include <pwd.h>
-#define pam_modutil_getpwnam(pamh,user) getpwnam(user)
+#define pam_modutil_getpwnam(pamh, user)                                    \
+  getpwnam(user)
 #endif /* not HAVE_PAM_MODUTIL_GETGWNAM */
 
 /* fall back to using syslog() if pam_syslog() doesn't exist */
@@ -72,8 +84,8 @@ int pam_prompt(pam_handle_t *pamh,int style,char **response,const char *format,.
 #ifndef LOG_AUTHPRIV
 #define LOG_AUTHPRIV LOG_AUTH
 #endif /* not LOG_AUTHPRIV */
-#define pam_syslog(pamh,priority,format...) \
-    syslog(LOG_AUTHPRIV|(priority),##format)
+#define pam_syslog(pamh, priority, format...)                               \
+    syslog(LOG_AUTHPRIV|(priority), ##format)
 #endif /* not HAVE_PAM_SYSLOG */
 
 #endif /* _COMPAT_LDAP_COMPAT_H */

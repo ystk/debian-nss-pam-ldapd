@@ -2,7 +2,7 @@
    nslcd-prot.c - common functions for NSLCD lookups
 
    Copyright (C) 2006 West Consulting
-   Copyright (C) 2006, 2007, 2008 Arthur de Jong
+   Copyright (C) 2006, 2007, 2008, 2009, 2010, 2012 Arthur de Jong
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
@@ -33,13 +33,20 @@
 #include <sys/stat.h>
 #include <errno.h>
 #include <string.h>
+#include <fcntl.h>
 
 #include "nslcd.h"
 #include "nslcd-prot.h"
+#include "compat/socket.h"
+
+/* read timeout is 60 seconds because looking up stuff may take some time
+   write timeout is 10 secods because nslcd could be loaded with requests */
+#define READ_TIMEOUT 60 * 1000
+#define WRITE_TIMEOUT 10 * 1000
 
 /* buffer sizes for I/O */
 #define READBUFFER_MINSIZE 1024
-#define READBUFFER_MAXSIZE 2*1024*1024
+#define READBUFFER_MAXSIZE 2 * 1024 * 1024
 #define WRITEBUFFER_MINSIZE 32
 #define WRITEBUFFER_MAXSIZE 32
 
@@ -55,31 +62,30 @@ TFILE *nslcd_client_open()
 {
   int sock;
   struct sockaddr_un addr;
-  struct timeval readtimeout,writetimeout;
   TFILE *fp;
+  int flags;
   /* create a socket */
-  if ( (sock=socket(PF_UNIX,SOCK_STREAM,0))<0 )
+  if ((sock = socket(PF_UNIX, SOCK_STREAM, 0)) < 0)
     return NULL;
   /* create socket address structure */
-  memset(&addr,0,sizeof(struct sockaddr_un));
-  addr.sun_family=AF_UNIX;
-  strncpy(addr.sun_path,NSLCD_SOCKET,sizeof(addr.sun_path));
-  addr.sun_path[sizeof(addr.sun_path)-1]='\0';
+  memset(&addr, 0, sizeof(struct sockaddr_un));
+  addr.sun_family = AF_UNIX;
+  strncpy(addr.sun_path, NSLCD_SOCKET, sizeof(addr.sun_path));
+  addr.sun_path[sizeof(addr.sun_path) - 1] = '\0';
+  /* close the file descriptor on exec (ignore errors) */
+  flags = fcntl(sock, F_GETFL);
+  if (flags >= 0)
+    (void)fcntl(sock, F_SETFD, flags | FD_CLOEXEC);
   /* connect to the socket */
-  if (connect(sock,(struct sockaddr *)&addr,(socklen_t)sizeof(struct sockaddr_un))<0)
+  if (connect(sock, (struct sockaddr *)&addr, SUN_LEN(&addr)) < 0)
   {
     (void)close(sock);
     return NULL;
   }
-  /* set the timeouts */
-  readtimeout.tv_sec=60; /* looking up stuff may take some time */
-  readtimeout.tv_usec=0;
-  writetimeout.tv_sec=10; /* nslcd could be loaded with requests */
-  writetimeout.tv_usec=0;
   /* create a stream object */
-  if ((fp=tio_fdopen(sock,&readtimeout,&writetimeout,
-                     READBUFFER_MINSIZE,READBUFFER_MAXSIZE,
-                     WRITEBUFFER_MINSIZE,WRITEBUFFER_MAXSIZE))==NULL)
+  if ((fp = tio_fdopen(sock, READ_TIMEOUT, WRITE_TIMEOUT,
+                       READBUFFER_MINSIZE, READBUFFER_MAXSIZE,
+                       WRITEBUFFER_MINSIZE, WRITEBUFFER_MAXSIZE)) == NULL)
   {
     (void)close(sock);
     return NULL;

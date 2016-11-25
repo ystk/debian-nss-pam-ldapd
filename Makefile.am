@@ -2,7 +2,7 @@
 #
 # Copyright (C) 2006 Luke Howard
 # Copyright (C) 2006 West Consulting
-# Copyright (C) 2006, 2007, 2008, 2009 Arthur de Jong
+# Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Arthur de Jong
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -19,52 +19,31 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301 USA
 
+SUBDIRS = compat common
 if ENABLE_NSS
-  MAYBE_NSS = nss
+  SUBDIRS += nss
 endif
 if ENABLE_PAM
-  MAYBE_PAM = pam
+  SUBDIRS += pam
 endif
 if ENABLE_NSLCD
-  ENABLE_NSLCD = nslcd
+  SUBDIRS += nslcd
 endif
-
-SUBDIRS = compat common $(MAYBE_NSS) $(MAYBE_PAM) $(ENABLE_NSLCD) man tests
-
-DEBIAN_FILES = debian/changelog debian/compat debian/control \
-               debian/copyright debian/rules debian/NEWS \
-               debian/source/format \
-               debian/nslcd.conffile \
-               debian/nslcd.config \
-               debian/nslcd.default \
-               debian/nslcd.docs \
-               debian/nslcd.examples \
-               debian/nslcd.init \
-               debian/nslcd.install \
-               debian/nslcd.manpages \
-               debian/nslcd.postinst \
-               debian/nslcd.postrm \
-               debian/nslcd.templates \
-               debian/libnss-ldapd.config \
-               debian/libnss-ldapd.install \
-               debian/libnss-ldapd.lintian-overrides \
-               debian/libnss-ldapd.postinst \
-               debian/libnss-ldapd.postrm \
-               debian/libnss-ldapd.templates \
-               debian/libpam-ldapd.install \
-               debian/libpam-ldapd.lintian-overrides \
-               debian/libpam-ldapd.manpages \
-               debian/libpam-ldapd.pam-auth-update \
-               debian/libpam-ldapd.postinst \
-               debian/libpam-ldapd.prerm \
-               debian/libpam-ldapd.templates \
-               debian/po/POTFILES.in debian/po/templates.pot \
-               $(wildcard debian/po/*.po)
+if ENABLE_PYNSLCD
+  SUBDIRS += pynslcd
+endif
+if ENABLE_UTILS
+  SUBDIRS += utils
+endif
+SUBDIRS += man tests
 
 EXTRA_DIST = nslcd.conf nslcd.h $(wildcard ChangeLog-20??) \
-             $(wildcard m4/*.m4) HACKING $(DEBIAN_FILES)
+             $(wildcard m4/*.m4) HACKING ldapns.schema ldapns.ldif
 
-DISTCHECK_CONFIGURE_FLAGS = --enable-warnings
+DISTCHECK_CONFIGURE_FLAGS = --enable-warnings --enable-pynslcd --enable-utils \
+                            --with-pam-seclib-dir="\$${libdir}/security" \
+                            --with-ldap-conf-file="\$${prefix}/nslcd.conf" \
+                            CPPFLAGS=$(CPPFLAGS) LDFLAGS=$(LDFLAGS)
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -78,25 +57,19 @@ install-nslcd_conf:
 	@if [ -f $(DESTDIR)$(NSLCD_CONF_PATH) ]; then \
 	  echo "$(DESTDIR)$(NSLCD_CONF_PATH) already exists, install will not overwrite"; \
 	else \
-	  $(INSTALL_DATA) -D $(srcdir)/nslcd.conf $(DESTDIR)$(NSLCD_CONF_PATH) || true; \
+	  $(mkinstalldirs) `dirname $(DESTDIR)$(NSLCD_CONF_PATH)`; \
+	  $(INSTALL) -m 600 $(srcdir)/nslcd.conf $(DESTDIR)$(NSLCD_CONF_PATH); \
 	fi
 uninstall-nslcd_conf:
 	-rm -f $(DESTDIR)$(NSLCD_CONF_PATH)
 
-# target for easily creating a Debian package
-# the find is an ugly hack to fix a bug if being built on an nfs filesystem
-deb: distdir
-	find $(distdir) -type d | xargs touch
-	cd $(distdir) && \
-	  debuild
-	rm -rf $(distdir)
-
 # target for generating the ChangeLog file
 changelog:
-	( svn2cl -i --stdout -r HEAD:1206 ; \
-		svn2cl -i --stdout -r 1205:981 --strip-prefix='nss-pam-ldapd' ; \
-	  svn2cl -i --stdout -r 980:807 --strip-prefix='nss-ldapd' ; \
-	) > ChangeLog
+	git log --date=short --name-only \
+	    --format="%x0c%ad  %aN <%aE>%n%n%x09* [%h]%x00%s%n%x00%+b%x00" \
+	    47f7fd10f87bfcb5240cf5b794ce9380bf671044... | \
+	  awk 'BEGIN { RS="\f"; FS="\0" } { if ($$1) { gsub(/\n*$$/, "", $$4); gsub(/^\n*/, "", $$4); gsub(/\n/, ", ", $$4); gsub(/\n/, "\n\t  ", $$3); print $$1 " " $$4 ": "; print "\t  " $$2 $$3 }}' | \
+	  fmt --width=78 -c > ChangeLog
 
 flawfinder.html:
 	flawfinder --quiet --html --context --followdotdir . > $@
@@ -107,7 +80,7 @@ rats.html:
 splint.txt:
 	-env LARCH_PATH=/usr/share/splint/lib/ \
 	    LCLIMPORTDIR=/usr/share/splint/imports/ \
-	    splint -checks \
+	    splint -checks -mustfreefresh \
 	           -warnposix +showsummary +showalluses +hints -namechecks \
 	           -globstate -predboolint -mustfreeonly -temptrans -kepttrans \
 	           -I. -I$(srcdir) -I$(top_builddir) $(DEFS) -D_REENTRANT -DDEBUG \

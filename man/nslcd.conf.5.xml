@@ -6,7 +6,7 @@
    nslcd.conf.5.xml - docbook manual page for nslcd.conf
 
    Copyright (C) 1997-2005 Luke Howard
-   Copyright (C) 2007, 2008, 2009, 2010 Arthur de Jong
+   Copyright (C) 2007-2014 Arthur de Jong
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
@@ -36,9 +36,9 @@
  <refmeta>
   <refentrytitle>nslcd.conf</refentrytitle>
   <manvolnum>5</manvolnum>
-  <refmiscinfo class="version">Version 0.7.13</refmiscinfo>
+  <refmiscinfo class="version">Version 0.9.4</refmiscinfo>
   <refmiscinfo class="manual">System Manager's Manual</refmiscinfo>
-  <refmiscinfo class="date">Dec 2010</refmiscinfo>
+  <refmiscinfo class="date">Jun 2014</refmiscinfo>
  </refmeta>
 
  <refnamediv id="name">
@@ -72,18 +72,20 @@
    <title>Runtime options</title>
    <variablelist>
 
-    <varlistentry>
+    <varlistentry id="threads"> <!-- since 0.6.2 -->
      <term><option>threads</option> <replaceable>NUM</replaceable></term>
      <listitem>
       <para>
        Specifies the number of threads to start that can handle requests
        and perform <acronym>LDAP</acronym> queries.
+       Each thread opens a separate connection to the <acronym>LDAP</acronym>
+       server.
        The default is to start 5 threads.
       </para>
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="uid"> <!-- since 0.6.3 -->
      <term><option>uid</option> <replaceable>UID</replaceable></term>
      <listitem>
       <para>
@@ -96,7 +98,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="gid"> <!-- since 0.6.3 -->
      <term><option>gid</option> <replaceable>GID</replaceable></term>
      <listitem>
       <para>
@@ -109,6 +111,27 @@
      </listitem>
     </varlistentry>
 
+    <varlistentry id="log"> <!-- since 0.9 -->
+     <term><option>log</option> <replaceable>SCHEME</replaceable> <optional><replaceable>LEVEL</replaceable></optional></term>
+     <listitem>
+      <para>
+       This option controls the way logging is done.
+       The <replaceable>SCHEME</replaceable> argument may either be
+       <literal>none</literal>, <literal>syslog</literal> or an absolute
+       file name.
+       The <replaceable>LEVEL</replaceable> argument is optional and specifies
+       the log level.
+       The log level may be one of: <literal>crit</literal>,
+       <literal>error</literal>, <literal>warning</literal>,
+       <literal>notice</literal>, <literal>info</literal> or
+       <literal>debug</literal>. The default log level is <literal>info</literal>.
+       All messages with the specified loglevel or higher are logged.
+       This option can be supplied multiple times.
+       If this option is omitted <literal>syslog info</literal> is assumed.
+      </para>
+     </listitem>
+    </varlistentry>
+
    </variablelist>
   </refsect2>
 
@@ -116,7 +139,7 @@
    <title>General connection options</title>
    <variablelist>
 
-    <varlistentry>
+    <varlistentry id="uri"> <!-- since 0.1 -->
      <term><option>uri</option> <replaceable>URI</replaceable></term>
      <listitem>
       <para>
@@ -127,9 +150,15 @@
        <acronym>LDAP</acronym> over <acronym>TCP</acronym>,
        <acronym>ICP</acronym> or <acronym>SSL</acronym> respectively (if
        supported by the <acronym>LDAP</acronym> library).
+      </para>
+      <para>
        Alternatively, the value <literal>DNS</literal> may be
        used to try to lookup the server using <acronym>DNS</acronym>
-       <acronym>SRV</acronym> records.
+       <acronym>SRV</acronym> records. <!-- since 0.5 -->
+       By default the current domain is used but another domain can
+       be queried by using the
+       <literal>DNS:</literal><replaceable>DOMAIN</replaceable> syntax.
+       <!-- since 0.8.4 -->
       </para>
       <para>
        When using the ldapi scheme, %2f should be used to escape slashes
@@ -149,7 +178,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="ldap_version"> <!-- since 0.1 -->
      <term><option>ldap_version</option> <replaceable>VERSION</replaceable></term>
      <listitem>
       <para>
@@ -159,7 +188,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="binddn"> <!-- since 0.1 -->
      <term><option>binddn</option> <replaceable>DN</replaceable></term>
      <listitem>
       <para>
@@ -170,11 +199,11 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="bindpw"> <!-- since 0.1 -->
      <term><option>bindpw</option> <replaceable>PASSWORD</replaceable></term>
      <listitem>
       <para>
-       Specifies the clear text credentials with which to bind.
+       Specifies the credentials with which to bind.
        This option is only applicable when used with <option>binddn</option> above.
        If you set this option you should consider changing the permissions
        of the <filename>nslcd.conf</filename> file to only grant access to
@@ -187,13 +216,29 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="rootpwmoddn"> <!-- since 0.7.3 -->
      <term><option>rootpwmoddn</option> <replaceable>DN</replaceable></term>
      <listitem>
       <para>
        Specifies the distinguished name to use when the root user tries to
-       modify a user's password using the PAM module. The PAM module prompts
-       the user for the admin password instead of the user's password.
+       modify a user's password using the PAM module.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry id="rootpwmodpw"> <!-- since 0.8.0 -->
+     <term><option>rootpwmodpw</option> <replaceable>PASSWORD</replaceable></term>
+     <listitem>
+      <para>
+       Specifies the credentials with which to bind if the root
+       user tries to change a user's password.
+       This option is only applicable when used with
+       <option>rootpwmoddn</option> above.
+       If this option is not specified the PAM module prompts the user for
+       this password.
+       If you set this option you should consider changing the permissions
+       of the <filename>nslcd.conf</filename> file to only grant access to
+       the root user.
       </para>
      </listitem>
     </varlistentry>
@@ -205,7 +250,7 @@
    <title><acronym>SASL</acronym> authentication options</title>
    <variablelist>
 
-    <varlistentry>
+    <varlistentry id="sasl_mech"> <!-- documented since 0.7.7 -->
      <term><option>sasl_mech</option> <replaceable>MECHANISM</replaceable></term>
      <listitem>
       <para>
@@ -215,7 +260,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="sasl_realm"> <!-- documented since 0.7.7 -->
      <term><option>sasl_realm</option> <replaceable>REALM</replaceable></term>
      <listitem>
       <para>
@@ -225,7 +270,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="sasl_authcid"> <!-- documented since 0.7.7 -->
      <term><option>sasl_authcid</option> <replaceable>AUTHCID</replaceable></term>
      <listitem>
       <para>
@@ -235,7 +280,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="sasl_authzid"> <!-- documented since 0.7.7 -->
      <term><option>sasl_authzid</option> <replaceable>AUTHZID</replaceable></term>
      <listitem>
       <para>
@@ -247,7 +292,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="sasl_secprops"> <!-- documented since 0.7.7 -->
      <term><option>sasl_secprops</option> <replaceable>PROPERTIES</replaceable></term>
      <listitem>
       <para>
@@ -259,6 +304,19 @@
      </listitem>
     </varlistentry>
 
+    <varlistentry id="sasl_canonicalize"> <!-- since 0.8.11 -->
+     <term><option>sasl_canonicalize</option> yes|no</term>
+     <listitem>
+      <para>
+       Determines whether the <acronym>LDAP</acronym> server host name should
+       be canonicalised. If this is set to yes the <acronym>LDAP</acronym>
+       library will do a reverse host name lookup.
+       By default, it is left up to the <acronym>LDAP</acronym> library
+       whether this check is performed or not.
+      </para>
+     </listitem>
+    </varlistentry>
+
    </variablelist>
   </refsect2>
 
@@ -266,7 +324,7 @@
    <title>Kerberos authentication options</title>
    <variablelist>
 
-    <varlistentry>
+    <varlistentry id="krb5_ccname"> <!-- since 0.5 -->
      <term><option>krb5_ccname</option> <replaceable>NAME</replaceable></term>
      <listitem>
       <para>
@@ -282,7 +340,7 @@
    <title>Search/mapping options</title>
    <variablelist>
 
-    <varlistentry>
+    <varlistentry id="base"> <!-- since 0.3 -->
      <term><option>base</option>
            <optional><replaceable>MAP</replaceable></optional>
            <replaceable>DN</replaceable></term>
@@ -311,20 +369,20 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="scope"> <!-- since 0.3 -->
      <term><option>scope</option>
            <optional><replaceable>MAP</replaceable></optional>
-           sub<optional>tree</optional>|one<optional>level</optional>|base</term>
+           sub<optional>tree</optional>|one<optional>level</optional>|base|children</term>
      <listitem>
       <para>
-       Specifies the search scope (subtree, one level or base object).
+       Specifies the search scope (subtree, onelevel, base or children).
        The default scope is subtree; base scope is almost never useful for
-       name service lookups.
+       name service lookups; children scope is not supported on all servers.
       </para>
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="deref"> <!-- since 0.3 -->
      <term><option>deref</option> never|searching|finding|always</term>
      <listitem>
       <para>
@@ -334,7 +392,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="referrals"> <!-- since 0.6.1 -->
      <term><option>referrals</option> yes|no</term>
      <listitem>
       <para>
@@ -344,7 +402,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="filter"> <!-- since 0.3 -->
      <term><option>filter</option>
            <replaceable>MAP</replaceable>
            <replaceable>FILTER</replaceable></term>
@@ -359,7 +417,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="map"> <!-- since 0.3 -->
      <term><option>map</option>
            <replaceable>MAP</replaceable>
            <replaceable>ATTRIBUTE</replaceable>
@@ -372,7 +430,7 @@
        the supported maps below.
        The <replaceable>ATTRIBUTE</replaceable> is the one as
        used in <acronym>RFC</acronym> 2307 (e.g. <literal>userPassword</literal>,
-       <literal>ipProtocolNumber</literal> or <literal>macAddress</literal>).
+       <literal>ipProtocolNumber</literal>, <literal>macAddress</literal>, etc.).
        The <replaceable>NEWATTRIBUTE</replaceable> may be any attribute
        as it is available in the directory.
       </para>
@@ -383,17 +441,32 @@
        See the section on attribute mapping expressions below for more details.
       </para>
       <para>
-       Only some attributes for passwd and shadow entries may be mapped with
-       an expression (because other attributes may be used in search
+       Only some attributes for group, passwd and shadow entries may be mapped
+       with an expression (because other attributes may be used in search
        filters).
+       For group entries only the <literal>userPassword</literal> attribute
+       may be mapped with an expression.
        For passwd entries the following attributes may be mapped with an
-       expression: <literal>gidNumber</literal>, <literal>gecos</literal>,
-       <literal>homeDirectory</literal> and <literal>loginShell</literal>.
+       expression: <literal>userPassword</literal>, <literal>gidNumber</literal>,
+       <literal>gecos</literal>, <literal>homeDirectory</literal> and
+       <literal>loginShell</literal>.
        For shadow entries the following attributes may be mapped with an
-       expression: <literal>shadowLastChange</literal>, <literal>shadowMin</literal>,
-       <literal>shadowMax</literal>, <literal>shadowWarning</literal>,
-       <literal>shadowInactive</literal>, <literal>shadowExpire</literal> and
-       <literal>shadowFlag</literal>.
+       expression: <literal>userPassword</literal>, <literal>shadowLastChange</literal>,
+       <literal>shadowMin</literal>, <literal>shadowMax</literal>,
+       <literal>shadowWarning</literal>, <literal>shadowInactive</literal>,
+       <literal>shadowExpire</literal> and <literal>shadowFlag</literal>.
+      </para>
+      <para> <!-- since 0.8.3 -->
+       The <literal>uidNumber</literal> and <literal>gidNumber</literal>
+       attributes in the <literal>passwd</literal> and <literal>group</literal>
+       maps may be mapped to the <literal>objectSid</literal> followed by
+       the domain SID to derive numeric user and group ids from the SID
+       (e.g. <literal>objectSid:S-1-5-21-3623811015-3361044348-30300820</literal>).
+      </para>
+      <para> <!-- since 0.8.0 -->
+       By default all <literal>userPassword</literal> attributes are mapped
+       to the unmatchable password ("*") to avoid accidentally leaking
+       password information.
       </para>
      </listitem>
     </varlistentry>
@@ -405,7 +478,7 @@
    <title>Timing/reconnect options</title>
    <variablelist>
 
-    <varlistentry>
+    <varlistentry id="bind_timelimit"> <!-- since 0.1 -->
      <term><option>bind_timelimit</option> <replaceable>SECONDS</replaceable></term>
      <listitem>
       <para>
@@ -420,7 +493,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="timelimit"> <!-- since 0.1 -->
      <term><option>timelimit</option> <replaceable>SECONDS</replaceable></term>
      <listitem>
       <para>
@@ -432,7 +505,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="idle_timelimit"> <!-- since 0.1 -->
      <term><option>idle_timelimit</option> <replaceable>SECONDS</replaceable></term>
      <listitem>
       <para>
@@ -443,7 +516,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="reconnect_sleeptime"> <!-- since 0.5 -->
      <term><option>reconnect_sleeptime</option> <replaceable>SECONDS</replaceable></term>
      <listitem>
       <para>
@@ -455,7 +528,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="reconnect_retrytime"> <!-- since 0.7.4, was reconnect_maxsleeptime before -->
      <term><option>reconnect_retrytime</option> <replaceable>SECONDS</replaceable></term>
      <listitem>
       <para>
@@ -487,7 +560,7 @@
    <title><acronym>SSL</acronym>/<acronym>TLS</acronym> options</title>
    <variablelist>
 
-    <varlistentry>
+    <varlistentry id="ssl"> <!-- since 0.3 -->
      <term><option>ssl</option> on|off|start_tls</term>
      <listitem>
       <para>
@@ -500,7 +573,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="tls_reqcert"> <!-- since 0.6.8, was tls_checkpeer before -->
      <term><option>tls_reqcert</option> never|allow|try|demand|hard</term>
      <listitem>
       <para>
@@ -515,17 +588,19 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="tls_cacertdir"> <!-- since 0.3 -->
      <term><option>tls_cacertdir</option> <replaceable>PATH</replaceable></term>
      <listitem>
       <para>
        Specifies the directory containing X.509 certificates for peer
        authentication.
+       This parameter is ignored when using GnuTLS.
+       On Debian OpenLDAP is linked against GnuTLS.
       </para>
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="tls_cacertfile"> <!-- since 0.3 -->
      <term><option>tls_cacertfile</option> <replaceable>PATH</replaceable></term>
      <listitem>
       <para>
@@ -534,16 +609,18 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="tls_randfile"> <!-- since 0.3 -->
      <term><option>tls_randfile</option> <replaceable>PATH</replaceable></term>
      <listitem>
       <para>
        Specifies the path to an entropy source.
+       This parameter is ignored when using GnuTLS.
+       On Debian OpenLDAP is linked against GnuTLS.
       </para>
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="tls_ciphers"> <!-- since 0.3 -->
      <term><option>tls_ciphers</option> <replaceable>CIPHERS</replaceable></term>
      <listitem>
       <para>
@@ -554,7 +631,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="tls_cert"> <!-- since 0.3 -->
      <term><option>tls_cert</option> <replaceable>PATH</replaceable></term>
      <listitem>
       <para>
@@ -564,7 +641,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="tls_key"> <!-- since 0.3 -->
      <term><option>tls_key</option> <replaceable>PATH</replaceable></term>
      <listitem>
       <para>
@@ -582,7 +659,7 @@
    <variablelist>
 
 <!-- do not document this option for now as support it is not finalized
-    <varlistentry>
+    <varlistentry id="restart">
      <term><option>restart</option> yes|no</term>
      <listitem>
       <para>
@@ -596,7 +673,7 @@
     </varlistentry>
 -->
 
-    <varlistentry>
+    <varlistentry id="pagesize"> <!-- since 0.3 -->
      <term><option>pagesize</option> <replaceable>NUMBER</replaceable></term>
      <listitem>
       <para>
@@ -615,7 +692,7 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="nss_initgroups_ignoreusers"> <!-- since 0.7.4 -->
      <term><option>nss_initgroups_ignoreusers</option> user1,user2,...</term>
      <listitem>
       <para>
@@ -632,7 +709,66 @@
      </listitem>
     </varlistentry>
 
-    <varlistentry>
+    <varlistentry id="nss_min_uid"> <!-- since 0.8.0 -->
+     <term><option>nss_min_uid</option> <replaceable>UID</replaceable></term>
+     <listitem>
+      <para>
+       This option ensures that <acronym>LDAP</acronym> users with a numeric
+       user id lower than the specified value are ignored. Also requests for
+       users with a lower user id are ignored.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry id="nss_nested_groups"> <!-- since 0.9.0 -->
+     <term><option>nss_nested_groups</option> yes|no</term>
+     <listitem>
+      <para>
+       If this option is set, the <literal>member</literal> attribute of a
+       group may point to another group.
+       Members of nested groups are also returned in the higher level group
+       and parent groups are returned when finding groups for a specific user.
+       The default is not to perform extra searches for nested groups.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry id="validnames"> <!-- since 0.8.2 -->
+     <term><option>validnames</option> <replaceable>REGEX</replaceable></term>
+     <listitem>
+      <para>
+       This option can be used to specify how user and group names are
+       verified within the system. This pattern is used to check all user and
+       group names that are requested and returned from <acronym>LDAP</acronym>.
+      </para>
+      <para>
+       The regular expression should be specified as a POSIX extended regular
+       expression. The expression itself needs to be separated by slash (/)
+       characters and the 'i' flag may be appended at the end to indicate
+       that the match should be case-insensetive.
+       The default value is
+       <literal>/^[a-z0-9._@$()]([a-z0-9._@$() \\~-]*[a-z0-9._@$()~-])?$/i</literal>
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry id="ignorecase"> <!-- since 0.8.7 -->
+     <term><option>ignorecase</option> yes|no</term>
+     <listitem>
+      <para>
+       This specifies whether or not to perform searches for group,
+       netgroup, passwd, protocols, rpc, services and shadow maps using
+       case-insensitive matching.
+       Setting this to <literal>yes</literal> could open up the system
+       to authorisation vulnerabilities and introduce nscd cache poisoning
+       vulnerabilities which allow denial of service.
+       The default is to perform case-sensitve filtering of LDAP search
+       results for the above maps.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry id="pam_authz_search"> <!-- since 0.7.4 -->
      <term><option>pam_authz_search</option>
            <replaceable>FILTER</replaceable></term>
      <listitem>
@@ -646,20 +782,96 @@
          <literal>$username</literal>, <literal>$service</literal>,
          <literal>$ruser</literal>, <literal>$rhost</literal>,
          <literal>$tty</literal>, <literal>$hostname</literal>,
+         <literal>$fqdn</literal>, <!-- since 0.8.1 -->
          <literal>$dn</literal>, and <literal>$uid</literal>.
        These references are substituted in the search filter using the
        same syntax as described in the section on attribute mapping
        expressions below.
       </para>
       <para>
-       For example, to check that the user has a proper authorizedService
-       value if the attribute is present:
-       <literal>(&amp;(objectClass=posixAccount)(uid=$username)
-       (|(authorizedService=$service)(!(authorizedService=*))))</literal>
+       For example, to check that the user has a proper <literal>authorizedService</literal>
+       value if the attribute is present (this almost emulates the
+       <option>pam_check_service_attr</option> option in PADL's pam_ldap):
+       <literallayout><literal>(&amp;(objectClass=posixAccount)(uid=$username)(|(authorizedService=$service)(!(authorizedService=*))))</literal></literallayout>
       </para>
       <para>
-       The default behaviour is not to do this extra search and always
-       grant access.
+       The <option>pam_check_host_attr</option> option can be emulated with:
+       <literallayout><literal>(&amp;(objectClass=posixAccount)(uid=$username)(|(host=$hostname)(host=$fqdn)(host=\\*)))</literal></literallayout>
+      </para>
+      <para> <!-- since 0.8.9 -->
+       This option may be specified multiple times and all specified searches
+       should at least return one entry for access to be granted.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry id="pam_password_prohibit_message"> <!-- since 0.8.11 -->
+     <term><option>pam_password_prohibit_message</option>
+           "<replaceable>MESSAGE</replaceable>"</term>
+     <listitem>
+      <para>
+       If this option is set password modification using pam_ldap will be
+       denied and the specified message will be presented to the user instead.
+       The message can be used to direct the user to an alternative means
+       of changing their password.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry id="reconnect_invalidate"> <!-- since 0.9.1, was nscd_invalidate in 0.9.0 -->
+     <term><option>reconnect_invalidate</option>
+           <replaceable>DB</replaceable>,<replaceable>DB</replaceable>,...</term>
+     <listitem>
+      <para>
+       If this option is set, on start-up and whenever a connection to the
+       <acronym>LDAP</acronym> server is re-established after an error
+       the specified caches are flushed.
+      </para>
+      <para>
+       If <replaceable>DB</replaceable> is one of the nsswitch maps,
+       <command>nscd</command> is contacted to flush its cache for the
+       specified database.
+       <!-- since 0.9.1 -->
+       If <replaceable>DB</replaceable> is <literal>nfsidmap</literal>,
+       <command>nfsidmap</command> is contacted to clear its cache.
+      </para>
+      <para>
+       Using this option ensures that external caches are cleared of
+       information (typically the absence of users) while the
+       <acronym>LDAP</acronym> server was unavailable.
+      </para>
+     </listitem>
+    </varlistentry>
+
+    <varlistentry id="cache"> <!-- since 0.9.3 -->
+     <term><option>cache</option>
+           <replaceable>CACHE</replaceable>
+           <replaceable>TIME</replaceable>
+           <optional><replaceable>TIME</replaceable></optional></term>
+     <listitem>
+      <para>
+       Configure the time entries are kept in the specified internal cache.
+      </para>
+      <para>
+        The first <replaceable>TIME</replaceable> value specifies the time
+        to keep found entries in the cache.
+        The second <replaceable>TIME</replaceable> value specifies to the
+        time to remember that a particular entry was not found.
+        If the second parameter is absent, it is assumed to be the same as
+        the first.
+      </para>
+      <para>
+       Time values are specified as a number followed by an
+       <literal>s</literal> for seconds, <literal>m</literal> for minutes,
+       <literal>h</literal> for hours or <literal>d</literal> for days.
+       Use <literal>0</literal> or <literal>off</literal> to disable the
+       cache.
+      </para>
+      <para>
+       Currently, only the <literal>dn2uid</literal> cache is supported
+       that is used to remember DN to username lookups that are used when the
+       <literal>member</literal> attribute is used.
+       The default time value for this cache is <literal>15m</literal>.
       </para>
      </listitem>
     </varlistentry>
@@ -728,14 +940,13 @@
   </variablelist>
  </refsect1>
 
- <refsect1 id="attmappingexpressions">
+ <refsect1 id="attmappingexpressions"> <!-- since 0.7.2 -->
   <title>Attribute mapping expressions</title>
   <para>
    For some attributes a mapping expression may be used to construct the
-   resulting value. This is currently only possible for attributes that do
+   resulting value.
+   This is currently only possible for attributes that do
    not need to be used in search filters.
-  </para>
-  <para>
    The expressions are a subset of the double quoted string expressions in the
    Bourne (POSIX) shell.
    Instead of variable substitution, attribute lookups are done on the current
@@ -759,14 +970,52 @@
    <varlistentry>
     <term><literal>${attr:+word}</literal></term>
     <listitem><para>
-     (use alternative) will substitbute word if attribute is set, otherwise
-     substitute the empty string
+     (use alternative) will substitbute <literal>word</literal> if attribute
+     is set, otherwise substitute the empty string
+    </para></listitem>
+   </varlistentry>
+   <varlistentry> <!-- since 0.9.0 -->
+    <term><literal>${attr#word}</literal></term>
+    <listitem><para>
+     remove the shortest possible match of <literal>word</literal> from the
+     left of the attribute value
+    </para></listitem>
+   </varlistentry>
+   <varlistentry> <!-- since 0.9.0 (pynslcd only) -->
+    <term><literal>${attr##word}</literal></term>
+    <listitem><para>
+     remove the longest possible match of <literal>word</literal> from the
+     left of the attribute value (<command>pynslcd</command> only)
+    </para></listitem>
+   </varlistentry>
+   <varlistentry> <!-- since 0.9.0 (pynslcd only) -->
+    <term><literal>${attr%word}</literal></term>
+    <listitem><para>
+     remove the shortest possible match of <literal>word</literal> from the
+     right of the attribute value (<command>pynslcd</command> only)
+    </para></listitem>
+   </varlistentry>
+   <varlistentry> <!-- since 0.9.0 (pynslcd only) -->
+    <term><literal>${attr%%word}</literal></term>
+    <listitem><para>
+     remove the longest possible match of <literal>word</literal> from the
+     right of the attribute value (<command>pynslcd</command> only)
     </para></listitem>
    </varlistentry>
   </variablelist>
   <para>
-   The <command>nslcd</command> daemon checks the expressions to figure
-   out which attributes to fetch from <acronym>LDAP</acronym>.
+   Only the # matching expression is supported in <command>nslcd</command>
+   and only with the ? wildcard symbol. The <command>pynslcd</command>
+   implementation supports full matching.
+  </para>
+  <para>
+   Quote (<literal>"</literal>), dollar (<literal>$</literal>) and
+   backslash (<literal>\</literal>) characters should be escaped with a
+   backslash (<literal>\</literal>).
+  </para>
+  <para>
+   The expressions are checked to figure out which attributes to fetch
+   from <acronym>LDAP</acronym>.
    Some examples to demonstrate how these expressions may be used in
    attribute mapping:
   </para>
@@ -790,6 +1039,13 @@
     <listitem><para>
      if the <literal>isDisabled</literal> attribute is set, return 100,
      otherwise leave value empty
+    </para></listitem>
+   </varlistentry>
+   <varlistentry>
+    <term><literal>"${userPassword#{crypt\}}"</literal></term>
+    <listitem><para>
+     strip the {crypt} prefix from the userPassword attribute, returning
+     the raw hash value
     </para></listitem>
    </varlistentry>
   </variablelist>

@@ -2,7 +2,7 @@
    test_common.c - simple test for the common module
    This file is part of the nss-pam-ldapd library.
 
-   Copyright (C) 2008, 2009 Arthur de Jong
+   Copyright (C) 2008, 2009, 2011, 2012, 2013 Arthur de Jong
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
@@ -24,17 +24,11 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include <sys/stat.h>
 
 #include "nslcd/common.h"
-
-/* this is a simple way to get this into an executable */
-const char **base_get_var(int UNUSED(map)) {return NULL;}
-int *scope_get_var(int UNUSED(map)) {return NULL;}
-const char **filter_get_var(int UNUSED(map)) {return NULL;}
-const char **attmap_get_var(int UNUSED(map),const char UNUSED(*name)) {return NULL;}
-const char *attmap_get_value(MYLDAP_ENTRY UNUSED(*entry),const char UNUSED(*attr),char UNUSED(*buffer),size_t UNUSED(buflen)) {return "";}
-void *attmap_add_attributes(void UNUSED(*set),const char UNUSED(*attr)) {return NULL;}
-const char *attmap_set_mapping(const char UNUSED(**var),const char UNUSED(*value)) {return NULL;}
+#include "nslcd/cfg.h"
+#include "nslcd/log.h"
 
 static void test_isvalidname(void)
 {
@@ -45,11 +39,30 @@ static void test_isvalidname(void)
   assert(isvalidname("foo\\bar"));
   assert(!isvalidname("\\foo\\bar"));
   assert(!isvalidname("foo\\bar\\"));
+  assert(isvalidname("me"));    /* try short name */
+  assert(isvalidname("f"));
+  assert(isvalidname("(foo bar)"));
 }
 
 /* the main program... */
-int main(int UNUSED(argc),char UNUSED(*argv[]))
+int main(int UNUSED(argc), char UNUSED(*argv[]))
 {
+  char *srcdir;
+  char fname[100];
+  /* build the name of the file */
+  srcdir = getenv("srcdir");
+  if (srcdir == NULL)
+    srcdir = ".";
+  snprintf(fname, sizeof(fname), "%s/nslcd-test.conf", srcdir);
+  fname[sizeof(fname) - 1] = '\0';
+  /* ensure that file is not world readable for configuration parsing to
+     succeed */
+  (void)chmod(fname, (mode_t)0660);
+  /* initialize configuration */
+  cfg_init(fname);
+  /* partially initialize logging */
+  log_setdefaultloglevel(LOG_DEBUG);
+  /* run the tests */
   test_isvalidname();
   return 0;
 }

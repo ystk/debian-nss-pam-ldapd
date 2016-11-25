@@ -5,7 +5,7 @@
 
    Copyright (C) 1997-2005 Luke Howard
    Copyright (C) 2007 West Consulting
-   Copyright (C) 2007, 2008, 2009, 2010 Arthur de Jong
+   Copyright (C) 2007, 2008, 2009, 2010, 2011, 2012, 2013 Arthur de Jong
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
@@ -30,6 +30,8 @@
 #include <sys/types.h>
 #include <lber.h>
 #include <ldap.h>
+#include <regex.h>
+#include <time.h>
 
 #include "compat/attrs.h"
 #include "common/set.h"
@@ -39,37 +41,38 @@
 #define NOGID ((gid_t)-1)
 
 /* maximum number of URIs */
-#define NSS_LDAP_CONFIG_URI_MAX         31
+#define NSS_LDAP_CONFIG_MAX_URIS 31
 
-/* maximum number of 'passwd base's */
-#define NSS_LDAP_CONFIG_MAX_BASES 7
+/* maximum number of search bases */
+#define NSS_LDAP_CONFIG_MAX_BASES 31
 
-enum ldap_ssl_options
-{
+/* maximum number of pam_authz_search options */
+#define NSS_LDAP_CONFIG_MAX_AUTHZ_SEARCHES 8
+
+enum ldap_ssl_options {
   SSL_OFF,
   SSL_LDAPS,
   SSL_START_TLS
 };
 
 /* selectors for different maps */
-enum ldap_map_selector
-{
-  LM_PASSWD,
-  LM_SHADOW,
+enum ldap_map_selector {
+  LM_ALIASES,
+  LM_ETHERS,
   LM_GROUP,
   LM_HOSTS,
-  LM_SERVICES,
+  LM_NETGROUP,
   LM_NETWORKS,
+  LM_PASSWD,
   LM_PROTOCOLS,
   LM_RPC,
-  LM_ETHERS,
-  LM_ALIASES,
-  LM_NETGROUP,
+  LM_SERVICES,
+  LM_SHADOW,
+  LM_NFSIDMAP, /* only used for cache invalidation */
   LM_NONE
 };
 
-struct myldap_uri
-{
+struct myldap_uri {
   char *uri;
   /* time of first failed operation */
   time_t firstfail;
@@ -77,74 +80,65 @@ struct myldap_uri
   time_t lastfail;
 };
 
-struct ldap_config
-{
-  /* the number of threads to start */
-  int ldc_threads;
-  /* the user id nslcd should be run as */
-  uid_t ldc_uid;
-  /* the group id nslcd should be run as */
-  gid_t ldc_gid;
-  /* NULL terminated list of URIs */
-  struct myldap_uri ldc_uris[NSS_LDAP_CONFIG_URI_MAX+1];
-  /* protocol version */
-  int ldc_version;
-  /* bind DN */
-  char *ldc_binddn;
-  /* bind cred */
-  char *ldc_bindpw;
-  /* bind DN for password modification by administrator */
-  char *ldc_rootpwmoddn;
-  /* sasl mech */
-  char *ldc_sasl_mech;
-  /* sasl realm */
-  char *ldc_sasl_realm;
-  /* sasl authentication id */
-  char *ldc_sasl_authcid;
-  /* sasl authorization id */
-  char *ldc_sasl_authzid;
-  /* sasl security */
-  char *ldc_sasl_secprops;
-  /* base DN, eg. dc=gnu,dc=org */
-  const char *ldc_bases[NSS_LDAP_CONFIG_MAX_BASES];
-  /* scope for searches */
-  int ldc_scope;
-  /* dereference aliases/links */
-  int ldc_deref;
-  /* chase referrals */
-  int ldc_referrals;
-  /* bind timelimit */
-  int ldc_bind_timelimit;
-  /* search timelimit */
-  int ldc_timelimit;
-  /* idle timeout */
-  int ldc_idle_timelimit;
-  /* seconds to sleep; doubled until max */
-  int ldc_reconnect_sleeptime;
-  /* maximum seconds to sleep */
-  int ldc_reconnect_retrytime;
+struct ldap_config {
+  int threads;    /* the number of threads to start */
+  char *uidname;  /* the user name specified in the uid option */
+  uid_t uid;      /* the user id nslcd should be run as */
+  gid_t gid;      /* the group id nslcd should be run as */
+
+  struct myldap_uri uris[NSS_LDAP_CONFIG_MAX_URIS + 1]; /* NULL terminated list of URIs */
+  int ldap_version;   /* LDAP protocol version */
+  char *binddn;       /* bind DN */
+  char *bindpw;       /* bind cred */
+  char *rootpwmoddn;  /* bind DN for password modification by root */
+  char *rootpwmodpw;  /* bind password for password modification by root */
+
+  char *sasl_mech;      /* SASL mechanism */
+  char *sasl_realm;     /* SASL realm */
+  char *sasl_authcid;   /* SASL authentication identity */
+  char *sasl_authzid;   /* SASL authorization identity */
+  char *sasl_secprops;  /* SASL security properties */
+#ifdef LDAP_OPT_X_SASL_NOCANON
+  int sasl_canonicalize; /* whether host name should be canonicalised */
+#endif /* LDAP_OPT_X_SASL_NOCANON */
+
+  const char *bases[NSS_LDAP_CONFIG_MAX_BASES]; /* search bases */
+  int scope;      /* scope for searches */
+  int deref;      /* dereference aliases/links */
+  int referrals;  /* chase referrals */
+
+  int bind_timelimit;       /* bind timelimit */
+  int timelimit;            /* search timelimit */
+  int idle_timelimit;       /* idle timeout */
+  int reconnect_sleeptime;  /* seconds to sleep; doubled until max */
+  int reconnect_retrytime;  /* maximum seconds to sleep */
+
 #ifdef LDAP_OPT_X_TLS
   /* SSL enabled */
-  enum ldap_ssl_options ldc_ssl_on;
+  enum ldap_ssl_options ssl;
 #endif /* LDAP_OPT_X_TLS */
-  /* whether the LDAP library should restart the select(2) system call when interrupted */
-  int ldc_restart;
-  /* set to a greater than 0 to enable handling of paged results with the specified size */
-  int ldc_pagesize;
-  /* the users for which no initgroups() searches should be done
-     Note: because we use a set here comparisons will be case-insensitive */
-  SET *ldc_nss_initgroups_ignoreusers;
-  /* the search that should be performed to do autorisation checks */
-  char *ldc_pam_authz_search;
+
+  int pagesize; /* set to a greater than 0 to enable handling of paged results with the specified size */
+  SET *nss_initgroups_ignoreusers;  /* the users for which no initgroups() searches should be done */
+  uid_t nss_min_uid;  /* minimum uid for users retrieved from LDAP */
+  int nss_nested_groups; /* whether to expand nested groups */
+  regex_t validnames; /* the regular expression to determine valid names */
+  char *validnames_str; /* string version of validnames regexp */
+  int ignorecase; /* whether or not case should be ignored in lookups */
+  char *pam_authz_searches[NSS_LDAP_CONFIG_MAX_AUTHZ_SEARCHES]; /* the searches that should be performed to do autorisation checks */
+  char *pam_password_prohibit_message;   /* whether password changing should be denied and user prompted with this message */
+  char reconnect_invalidate[LM_NONE];  /* set to 1 if the corresponding map should be invalidated */
+
+  time_t cache_dn2uid_positive;
+  time_t cache_dn2uid_negative;
 };
 
 /* this is a pointer to the global configuration, it should be available
-   once cfg_init() was called */
+   and populated after cfg_init() is called */
 extern struct ldap_config *nslcd_cfg;
 
-/* Initialize the configuration in nslcd_cfg. This method
-   will read the default configuration file and call exit()
-   if an error occurs. */
+/* Initialize the configuration in nslcd_cfg. This method will read the
+   default configuration file and call exit() if an error occurs. */
 void cfg_init(const char *fname);
 
 #endif /* NSLCD__CFG_H */

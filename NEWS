@@ -1,3 +1,398 @@
+changes from 0.9.3 to 0.9.4
+---------------------------
+
+* also handle password policy information on BIND failure (this makes it
+  possible to distinguish between a wrong password and an expired password)
+* fix mapping the member attribute to an empty string
+* any buffers that may have held passwords are cleared before the memory is
+  released
+* increase buffer size for passwords to support extremely long passwords
+  (thanks ushi)
+* increase buffer size for DN to support very long names or names with
+  non-ASCII characters
+* log an error in almost all places where a defined buffer is not large
+  enough to hold the provided data instead of just (sometimes silently)
+  failing
+* logging improvements (start-up problems, login failures)
+* small improvement for Solaris
+
+
+changes from 0.9.2 to 0.9.3
+---------------------------
+
+* make the dn2uid cache lifetime configurable with the cache configuration
+  option
+* have the nslcd process only exit after the service is completely available
+  to avoid race conditions in the init script
+* the nslcd daemon now properly daemonises (double fork)
+* support mapping the member attribute to an empty string to disable the
+  functionality to do extra lookups for member DN to member uid translations
+* implement deref control handling to request the LDAP server to dereference
+  group member attribute values to uid values
+* support getting built-in groups from Active Directory (thanks Davy Defaud)
+* fix for pwdLastSet attribute value handling (thanks Joshua Shire)
+* fix a possible crash in the NSS module when retrieving large networks
+  entries (thanks Lukas Slebodnik)
+* correct NSS h_errnop return value to indicate buffer too small (thanks
+  Nalin Dahyabhai)
+* fix a bug with shadow values on 64-bit architectures
+* automatically detect DragonFly as using the FreeBSD NSS interface (thanks
+  Francois Tigeot)
+* add a build-time test to see if krb5 is thread-safe
+* various minor bug fixes
+
+
+changes from 0.9.1 to 0.9.2
+---------------------------
+
+* increase password value buffer size (by Bersl)
+* avoid more broken pipe errors by using a low timeout when aborting reading
+  requested information from nslcd (thanks John Sullivan)
+* only log broken pipe errors in debugging mode
+* fix buffer overflow on interrupted read that is hard to trigger (thanks
+  John Sullivan)
+* use clock_gettime() with CLOCK_MONOTONIC for timeout calculations to avoid
+  clock adjustments errors (thanks John Sullivan)
+* extend test suite to test for CLOCK_MONOTONIC and timed IO timeout
+  calculations
+* increase the maximum number of base statements per map to 31
+* use larger nslcd send buffers to reduce the number of write operations in
+  nslcd and consequently the number of reads in the NSS and PAM modules
+  (thanks John Sullivan)
+* also run invalidators after first successful search
+* various clean-ups, portability improvements and fixes for compiler warnings
+* import configure checks of Python modules
+* provide a script for setting up slapd in a test environment, automatically
+  loaded with the required test data
+* add script for evaluating test environment availability
+* portability improvements in the test scripts and test environment
+
+
+changes from 0.9.0 to 0.9.1
+---------------------------
+
+* rename the nscd_invalidate option to reconnect_invalidate and allow flushing
+  the nfsidmap cache with the new option
+* implement an -n switch to not daemonise (by Caleb Callaway)
+* nslcd will now return partial shadow information to non-root users to avoid
+  authorisation problems with setgid shadow authentication helpers with some
+  PAM stacks
+* nslcd will now retry failing LDAP connections after receiving SIGUSR1
+  (SIGUSR1 could be sent after re-establishing a network connection)
+* fix the way manual pages are installed in some situations
+* the code for the nslcd utilities (getent.ldap and chsh.ldap) is now
+  installed in {prefix}/share/nslcd-utils
+* improve error and help output of the getent.ldap command
+* documentation updates
+* a number of tests were added and existing tests were extended
+* fix for a potential, small memory leak in PAM module regarding temporary
+  saving of old password
+* a large number of bug fixes and improvements in pynslcd
+* hide passwords from the pynslcd debug output
+* support start_tls, pam_password_prohibit_message, nss_initgroups_ignoreusers
+  and nss_min_uid in pynslcd
+* fix rootpwmodpw handling in pynslcd
+* complete a basic PAM implementation in pynslcd (some things such as shadow
+  attribute checking remain to be implemented)
+* clean up the caching functionality in pynslcd (functionality is still
+  disabled)
+
+
+changes from 0.8.12 to 0.9.0
+----------------------------
+
+* backwards incompatible change to the communications protocol between nslcd
+  and NSS and PAM modules to use network byte order to be able to work on
+  mixed endian multiarch systems
+* netgroup lookups now makes a distinction between empty netgroups and
+  non-existing netgroups
+* the PAM protocol is now more consistent (cleaner support for password
+  modification by root, have all request parameters in the same order and
+  limit the information returned from the call)
+* request and handle password policy controls on LDAP authentication
+* implement support for nested groups which can be enabled with the
+  nss_nested_groups option (thanks Steve Hill)
+* add a log option to configure log level and logging to plain files
+* add an nscd_invalidate option to invalidate the nscd cache after recovering
+  from LDAP connection problems (to clear any negative cache entries)
+* allow trimming expressions with ${foo#bar} syntax in attribute mapping
+  expressions (thanks Thorsten Glaser)
+* pynslcd supports trimming expressions with full shell glob matching
+* support password modification in pynslcd
+* support children search scope for systems that have it
+* add a getent.ldap utility to perform nslcd queries bypassing the libc NSS
+  stack
+* implement functionality for changing user information and provide a
+  chsh.ldap utility to allow users to change their login shell
+* remove deprecated use_sasl, reconnect_tries, reconnect_maxsleeptime and
+  tls_checkpeer options which have been replaced long ago
+* allow names with one character in default validnames option and allow
+  parentheses (taken from Fedora packages)
+* fall back to updating the lastChange attribute with the normal LDAP
+  connection
+* dump full nslcd configuration at debug level on start-up
+* export an _nss_ldap_version symbol in the NSS module to make finding version
+  mismatches easier (the NSS module version is logged from nslcd)
+* documentation improvements
+* update the coding style for the C source code to follow a more modern and
+  commonly used coding convention
+* some parts of the code were refactored or rewritten to take into account the
+  changes within the software (e.g. configuration file handling, reduction in
+  the number of system calls for normal communication)
+* numerous smaller fixes
+* portability and robustness improvements to the tests
+* implement lookup_netgroup and lookup_shadow test commands for systems that
+  cannot use getent to query these
+* guess the value for --with-pam-seclib-dir configure option if it is not
+  specified
+* temporary disable the caching functionality of pynslcd
+* usability improvements in the pynslcd implementation
+* various fixes for Solaris
+
+
+changes from 0.8.11 to 0.8.12
+-----------------------------
+
+* fix a problem with the sasl_canonicalize option that would cause errors
+  on non-SASL enabled systems
+* ensure that the file descriptors in the NSS and PAM modules for connecting
+  to nslcd are closed on exec of the process
+* allow attribute options in attribute mapping expressions
+* show reconnect messages when failing over to a different LDAP server or
+  re-establishing the connection to an LDAP server (the message accidentally
+  got hidden in 0.7.4)
+* fix a problem with the pw_class attribute in FreeBSD (fixes 0.8.11)
+* more fixes and improvements for Solaris (running under nscd may still give
+  problems though)
+* small improvement to PAM error logging
+* provide a pynslcd manual if pynslcd is built
+
+
+changes from 0.8.10 to 0.8.11
+-----------------------------
+
+* add a pam_password_prohibit_message nslcd.conf option to deny password
+  change (thanks to Ted Cheng)
+* add a sasl_canonicalize option to allow disabling of hostname
+  canonicalisation in OpenLDAP
+* have the nslcd daemon load the nslcd user's supplementary groups to have
+  more flexibility with assigning group permissions
+* fix logic error when falling back to getting ranged attribute values for
+  possibly binary attributes (thanks scan-build)
+* fix a problem when storing negative hit to dn2uid cache (thanks scan-build)
+* use poll() instead of select() for checking file descriptor activity to also
+  correctly work if more than FD_SETSIZE files are already open
+* small portability improvements
+* improve support for using Netscape LDAP libraries
+* improvements and fixes to the Solaris NSS code
+* grow all search filter buffers to 4096 bytes
+* some improvements to the pynslcd implementation
+* add an LDIF version of the ldapns.schema schema file
+
+
+changes from 0.8.9 to 0.8.10
+----------------------------
+
+* documentation improvements
+* fix a problem that causes the PAM module to prompt for a new password
+  even though the old one was wrong
+* log successful password change in nslcd
+* install default configuration file with reduced permissions (further
+  protection for CVE-2009-1073)
+
+
+changes from 0.8.8 to 0.8.9
+---------------------------
+
+* allow the pam_authz_search option to be specified multiple times
+* improvements to pynslcd adding support for pam_authz_search
+* implement extra range checking of all numeric values
+* make documentation up-to-date
+* compatibility improvements, especially for FreeBSD
+
+
+changes from 0.8.7 to 0.8.8
+---------------------------
+
+* fix a regression in the handling of PAM requests
+* add the ldapns.schema file from pam_ldap to the tarball
+
+
+changes from 0.8.6 to 0.8.7
+---------------------------
+
+* log the first 10 search results in debug mode to make debugging easier
+  (patch by Matthijs Kooijman)
+* provide more detailed logging information for LDAP errors, this should
+  especially help for TLS related problems (based on a patch by Mel Flynn)
+* fix logging of invalid pam_authz_search value
+* when doing DNS queries for SRV records recognise default ldap and ldaps
+  ports
+* make whether or not to do case-sensitive filtering configurable (patch by
+  Matthew L. Dailey)
+* document the fact that each thread opens its own connection (patch by
+  Chris Hiestand)
+* some small portability improvements
+* try to prevent some of the Broken pipe messages in nslcd
+* increase buffer used for pam_authz_search as suggested by Chris J Arges
+* pynslcd now handles privileged requests correctly
+* pynslcd now supports attribute mapping using the lower() and upper()
+  functions
+
+
+changes from 0.8.5 to 0.8.6
+---------------------------
+
+* a number of code improvements by Jakub Hrozek
+* fixes for FreeBSD (thanks Maxim Vetrov)
+* include missing pynslcd files from tarball
+* improvements to the pynslcd implementation
+* implement an offline cache in pynslcd
+* the Debian packaging was split from the main source tree
+
+
+changes from 0.8.4 to 0.8.5
+---------------------------
+
+* support larger gecos values
+* reduce loglevel of user not found messages to avoid spamming the logs
+  with useless information (thanks Wakko Warner)
+* other logging improvements
+* explicitly parse numbers as base 10 (thanks Jakub Hrozek)
+* implement FreeBSD group membership NSS function (thanks Tom Judge)
+* fix an issue with detecting the uid of the calling process and log
+  denied shadow requests in debug mode
+* fix a typo in the disconnect logic code (thanks Martin Poole)
+* implement configuration file handling in pynslcd and other pynslcd
+  improvements
+* Debian packaging improvements
+
+
+changes from 0.8.3 to 0.8.4
+---------------------------
+
+* switch to using the member attribute by default instead of
+  uniqueMember (backwards incompatible change)
+* only return "x" as a password hash when the object has the shadowAccount
+  objectClass and nsswitch.conf is configured to do shadow lookups using
+  LDAP (this avoids some problems with pam_unix)
+* fix problem with partial attribute name matches in DN (thanks Timothy
+  White)
+* fix a problem with objectSid mappings with recent versions of OpenLDAP
+  (patch by Wesley Mason)
+* set the socket timeout in a connection callback to avoid timeout
+  issues during the SSL handshake (patch by Stefan Völkel)
+* check for unknown variables in pam_authz_search
+* only check password expiration when authenticating, only check account
+  expiration when doing authorisation
+* make buffer sizes consistent and grow all buffers holding string
+  representations of numbers to be able to hold 64-bit numbers
+* update AX_PTHREAD from autoconf-archive
+* support querying DNS SRV records from a different domain than the current
+  one (based on a patch by James M. Leddy)
+* fix a problem with uninitialised memory while parsing the tls_ciphers
+  option
+* implement bounds checking of numeric values read from LDAP (patch by
+  Jakub Hrozek)
+* correctly support large uid and gid values from LDAP (patch by Jakub
+  Hrozek)
+* improvements to the configure script (patch by Jakub Hrozek)
+* Debian packaging improvements
+
+
+changes from 0.8.2 to 0.8.3
+---------------------------
+
+* support using the objectSid attribute to provide numeric user and group
+  ids, based on a patch by Wesley Mason
+* check shadow account and password expiry properties (similarly to what
+  pam_unix does) in the PAM handling code
+* implement attribute mapping functionality in pynslcd
+* relax default for validnames option to allow user names of only two
+  characters
+* make user and group name validation errors a little more informative
+* small portability improvements
+* general code improvements and refactoring in pynslcd
+* some simplifications in the protocol between the PAM module and nslcd
+  (without actual protocol changes so far)
+* Debian packaging improvements
+
+
+changes from 0.8.1 to 0.8.2
+---------------------------
+
+* fix problem with endless loop on incorrect password
+* fix a communication problem between nslcd and the NSS and PAM modules when
+  running on Solaris 10
+* fix a compilation issue on systems without HOST_NAME_MAX
+* link to the resolv library for hstrerror() on platforms that need it
+* ignore password change requests for users not in LDAP
+* many clean-ups to the tests and added some new tests including some
+  integration tests for the PAM functionality
+* some smaller code clean-ups and improvements
+* improvements to pynslcd, including implementations for service, protocol and
+  rpc lookups
+* implement a validnames option that can be used to filter valid user and
+  group names using a regular expression
+* improvements to the way nslcd shuts down with hanging worker threads
+
+
+changes from 0.8.0 to 0.8.1
+---------------------------
+
+* SECURITY FIX: the PAM module will allow authentication for users that do not
+                exist in LDAP, this allows login to local users with an
+                incorrect password (CVE-2011-0438)
+                the exploitability of the problem depends on the details of
+                the PAM stack and the use of the minimum_uid PAM option
+* include a file that was missing for Solaris support
+* add FreeBSD support, partially imported from the FreeBSD port (thanks to
+  Jacques Vidrine, Artem Kazakov and Alexander V. Chernikov)
+* document how to replace name pam_check_service_attr and pam_check_host_attr
+  options in PADL's pam_ldap with with pam_authz_search in nss-pam-ldapd
+* implement a fqdn variable that can be used in pam_authz_search filters
+* create the directory to hold the socket and pidfile on startup
+* implement host, network and netgroup support in pynslcd
+
+
+changes from 0.7.13 to 0.8.0
+----------------------------
+
+* include Solaris support developed by Ted C. Cheng of Symas Corporation
+* include an experimental partial implementation of nslcd in Python (disabled
+  by default, see --enable-pynslcd configure option)
+* implement a nss_min_uid option to filter user entries returned by LDAP
+* implement a rootpwmodpw option that allows the root user to change a user's
+  password without a password prompt
+* try to update the shadowLastChange attribute on password change
+* all log messages now include a description of the request to more easily
+  track problems when not running in debug mode
+* allow attribute mapping expressions for the userPassword attribute for
+  passwd, group and shadow entries and by default map it to the unmatchable
+  password ("*") to avoid accidentally leaking password information
+* numerous compatibility improvements
+* add --with-pam-seclib-dir and --with-pam-ldap-soname configure options to
+  allow more control of hot to install the PAM module
+* add --with-nss-flavour and --with-nss-maps configure options to support
+  other C libraries and limit which NSS modules to install
+* allow tilde (~) in user and group names
+* improvements to the timeout mechanism (connections are now actively timed
+  out using the idle_timelimit option)
+* set socket timeouts on the LDAP connection to disconnect regardless of LDAP
+  and possibly TLS handling of connection
+* better disconnect/reconnect handling of error conditions
+* some code improvements and cleanups and several smaller bug fixes
+* all internal string comparisons are now also case sensitive (e.g. for
+  providing DN to username lookups, etc)
+* signal handling in the daemon was changed to behave more reliable across
+  different threading implementations
+* nslcd will now always return a positive authorisation result during
+  authentication to avoid confusing the PAM module when it is only used for
+  authorisation
+* Debian packaging improvement: implement configuring SASL authentication
+  using Debconf, based on a patch by Daniel Dehennin
+
+
 changes from 0.7.12 to 0.7.13
 -----------------------------
 

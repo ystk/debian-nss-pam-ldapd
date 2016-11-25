@@ -1,6 +1,6 @@
 # Makefile.am - use automake to generate Makefile.in
 #
-# Copyright (C) 2008, 2009 Arthur de Jong
+# Copyright (C) 2008-2014 Arthur de Jong
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -23,10 +23,13 @@ AM_CPPFLAGS=-I$(top_srcdir)
 AM_CFLAGS = -fPIC
 
 EXTRA_DIST = getopt_long.c getopt_long.h \
-             daemon.c daemon.h \
              ether.c ether.h \
-             nss_compat.h \
+             shell.h \
+             strndup.c strndup.h \
+             nss_compat.h socket.h \
              ldap_compat.h pagectrl.c ldap_passwd_s.c ldap_initialize.c \
+             ldap_parse_passwordpolicy_control.c ldap_passwordpolicy_err2txt.c \
+             derefctrl.c \
              pam_compat.h pam_get_authtok.c pam_prompt.c
 
 libcompat_a_SOURCES = getpeercred.c getpeercred.h

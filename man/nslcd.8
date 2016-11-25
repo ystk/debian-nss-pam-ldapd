@@ -5,9 +5,9 @@
 \\$2 \(la\\$1\(ra\\$3
 ..
 .if \n(.g .mso www.tmac
-.TH nslcd 8 "Dec 2010" "Version 0.7.13" "System Manager's Manual"
+.TH nslcd 8 "Jun 2014" "Version 0.9.4" "System Manager's Manual"
 .SH NAME
-nslcd \- local LDAP name service daemon.
+nslcd \- local LDAP name service daemon
 .SH SYNOPSIS
 'nh
 .fi
@@ -15,9 +15,7 @@ nslcd \- local LDAP name service daemon.
 \fBnslcd\fR \kx
 .if (\nx>(\n(.l/2)) .nr x (\n(.l/5)
 'in \n(.iu+\nxu
-[
-\fIoptions\fR
-]
+[\fIoptions\fR]
 'in \n(.iu-\nxu
 .ad b
 'hy
@@ -33,11 +31,11 @@ See the included README for information on configuring the LDAP server.
 .SH OPTIONS
 \fBnslcd\fR accepts the following options:
 .TP 
-\*(T<\fB\-c, \-\-check\fR\*(T> 
+\*(T<\fB\-c\fR\*(T>, \*(T<\fB\-\-check\fR\*(T> 
 Check if the daemon is running.
-This causes nslcd to return 0 if the daemon is already running and 1 if it is not.
+This causes \fBnslcd\fR to return 0 if the daemon is already running and 1 if it is not.
 .TP 
-\*(T<\fB\-d, \-\-debug\fR\*(T> 
+\*(T<\fB\-d\fR\*(T>, \*(T<\fB\-\-debug\fR\*(T> 
 Enable debugging mode.
 \fBnslcd\fR will not put itself in the background and sends
 verbose debugging info to stderr.
@@ -46,11 +44,24 @@ This option is for debugging purposes only.
 Specify this option multiple times to also include more detailed logging
 from the LDAP library.
 .TP 
+\*(T<\fB\-n\fR\*(T>, \*(T<\fB\-\-nofork\fR\*(T> 
+Do not fork or daemonise and run \fBnslcd\fR in the
+foreground.
+.TP 
 \*(T<\fB\-\-help\fR\*(T> 
 Display short help and exit.
 .TP 
-\*(T<\fB\-V, \-\-version\fR\*(T> 
+\*(T<\fB\-V\fR\*(T>, \*(T<\fB\-\-version\fR\*(T> 
 Output version information and exit.
+.SH SIGNALS
+.TP 
+\*(T<\fBSIGTERM\fR\*(T>/\*(T<\fBSIGINT\fR\*(T>
+Cancel any running queries and exit.
+.TP 
+\*(T<\fBSIGUSR1\fR\*(T>
+Cause \fBnslcd\fR to retry any failing connections
+to the LDAP server, regardless of the \*(T<\fBreconnect_sleeptime\fR\*(T>
+and \*(T<\fBreconnect_retrytime\fR\*(T> options.
 .SH FILES
 \*(T<\fI/etc/nslcd.conf\fR\*(T> - the configuration file
 (see \fBnslcd.conf\fR(5))

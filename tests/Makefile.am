@@ -1,7 +1,7 @@
 # Makefile.am - use automake to generate Makefile.in
 #
 # Copyright (C) 2006 West Consulting
-# Copyright (C) 2006, 2007, 2008, 2009, 2010 Arthur de Jong
+# Copyright (C) 2006-2014 Arthur de Jong
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -18,94 +18,80 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
 # 02110-1301 USA
 
-TESTS = test_dict test_set test_tio test_cfg test_myldap.sh test_nsscmds.sh \
-        test_getpeercred test_common test_expr
+TESTS = test_dict test_set test_tio test_expr test_getpeercred test_cfg \
+        test_attmap test_myldap.sh test_common test_nsscmds.sh \
+        test_pamcmds.sh test_manpages.sh test_clock test_tio_timeout
+if HAVE_PYTHON
+  TESTS += test_pycompile.sh test_pylint.sh
+endif
+if ENABLE_PYNSLCD
+  TESTS += test_pynslcd_cache.py
+endif
 
-check_PROGRAMS = test_dict test_set test_tio test_cfg test_myldap \
-                 test_getpeercred test_common test_expr
+AM_TESTS_ENVIRONMENT = PYTHON='@PYTHON@'; export PYTHON; \
+                       builddir=$(builddir); export builddir;
 
-EXTRA_PROGRAMS = test_aliases test_ethers test_group test_hosts \
-                 test_netgroup test_networks test_passwd test_protocols \
-                 test_rpc test_services test_shadow \
-                 test_nslcd_group
+check_PROGRAMS = test_dict test_set test_tio test_expr test_getpeercred \
+                 test_cfg test_attmap test_myldap test_common test_clock \
+                 test_tio_timeout lookup_netgroup lookup_shadow \
+                 lookup_groupbyuser
 
-EXTRA_DIST = nslcd-test.conf test_myldap.sh test_nsscmds.sh usernames.txt
+EXTRA_DIST = README nslcd-test.conf usernames.txt testenv.sh test_myldap.sh \
+             test_nsscmds.sh  test_pamcmds.sh test_pamcmds.expect \
+             test_manpages.sh \
+             test_pycompile.sh test_pylint.sh pylint.rc test_pynslcd_cache.py \
+             setup_slapd.sh config.ldif test.ldif
 
 CLEANFILES = $(EXTRA_PROGRAMS)
 
 AM_CPPFLAGS = -I$(top_srcdir)
 AM_CFLAGS = $(PTHREAD_CFLAGS) -g
 
-# the following enables verbose protocol debugging information to be dumped
-#AM_CPPFLAGS += -DDEBUG_PROT -DDEBUG_PROT_DUMP
-
-# the following enabled verbose tio stats logging
-#AM_CPPFLAGS += -DDEBUG_TIO_STATS
-
-test_dict_SOURCES = test_dict.c ../common/dict.h ../common/dict.c
-#test_dict_LDADD = ../common/dict.o
+test_dict_SOURCES = test_dict.c ../common/dict.h
+test_dict_LDADD = ../common/libdict.a
 
 test_set_SOURCES = test_set.c ../common/set.h
 test_set_LDADD = ../common/libdict.a
 
-test_tio_SOURCES = test_tio.c ../common/tio.h ../common/tio.c
+test_tio_SOURCES = test_tio.c common.h ../common/tio.h
+test_tio_LDADD = ../common/tio.o
 test_tio_LDFLAGS = $(PTHREAD_CFLAGS) $(PTHREAD_LIBS)
 
-test_cfg_SOURCES = test_cfg.c
-test_cfg_LDADD = ../nslcd/log.o ../nslcd/attmap.o  \
-                 ../nslcd/common.o ../nslcd/myldap.o \
-                 ../nslcd/alias.o ../nslcd/ether.o ../nslcd/group.o \
-                 ../nslcd/host.o ../nslcd/netgroup.o ../nslcd/network.o \
-                 ../nslcd/passwd.o ../nslcd/protocol.o ../nslcd/rpc.o \
-                 ../nslcd/service.o ../nslcd/shadow.o \
-                 @nslcd_LIBS@ ../common/libtio.a ../common/libdict.a \
-                 ../common/libexpr.a ../compat/libcompat.a
-
-test_expr_SOURCES = test_expr.c
+test_expr_SOURCES = test_expr.c common.h
 test_expr_LDADD = ../common/set.o ../common/dict.o
 
-test_myldap_SOURCES = test_myldap.c
-test_myldap_LDADD = ../nslcd/log.o ../nslcd/common.o ../nslcd/cfg.o \
-                    ../nslcd/alias.o ../nslcd/ether.o ../nslcd/group.o \
-                    ../nslcd/host.o ../nslcd/netgroup.o ../nslcd/network.o \
-                    ../nslcd/passwd.o ../nslcd/protocol.o ../nslcd/rpc.o \
-                    ../nslcd/service.o ../nslcd/shadow.o \
-                    ../nslcd/myldap.o @nslcd_LIBS@ ../common/libtio.a \
-                    ../common/libdict.a ../compat/libcompat.a
-
-test_getpeercred_SOURCES = test_getpeercred.c
+test_getpeercred_SOURCES = test_getpeercred.c common.h
 test_getpeercred_LDADD = ../compat/libcompat.a
 
-test_common_SOURCES = test_common.c
-test_common_LDADD = ../nslcd/log.o ../nslcd/common.o ../nslcd/cfg.o \
-                    ../nslcd/alias.o ../nslcd/ether.o ../nslcd/group.o \
-                    ../nslcd/host.o ../nslcd/netgroup.o ../nslcd/network.o \
-                    ../nslcd/passwd.o ../nslcd/protocol.o ../nslcd/rpc.o \
-                    ../nslcd/service.o ../nslcd/shadow.o \
-                    ../nslcd/myldap.o @nslcd_LIBS@ ../common/libtio.a \
-                    ../common/libdict.a ../compat/libcompat.a
+# common objects that are included for the tests of nslcd functionality
+common_nslcd_LDADD = ../nslcd/log.o ../nslcd/common.o ../nslcd/invalidator.o \
+                     ../nslcd/myldap.o ../nslcd/attmap.o ../nslcd/nsswitch.o \
+                     ../nslcd/alias.o ../nslcd/ether.o ../nslcd/group.o \
+                     ../nslcd/host.o ../nslcd/netgroup.o ../nslcd/network.o \
+                     ../nslcd/passwd.o ../nslcd/protocol.o ../nslcd/rpc.o \
+                     ../nslcd/service.o ../nslcd/shadow.o ../nslcd/pam.o \
+                     ../common/libtio.a ../common/libdict.a \
+                     ../common/libexpr.a ../compat/libcompat.a \
+                     @nslcd_LIBS@ @PTHREAD_LIBS@
 
-common_SOURCES = ../common/nslcd-prot.c ../nslcd.h ../nss/prototypes.h \
-                 ../common/tio.c ../common/tio.h ../nss/common.c
+test_cfg_SOURCES = test_cfg.c common.h
+test_cfg_LDADD = $(common_nslcd_LDADD)
 
-test_aliases_SOURCES = test_aliases.c ../nss/aliases.c $(common_SOURCES)
-test_ethers_SOURCES = test_ethers.c ../nss/ethers.c $(common_SOURCES)
-test_group_SOURCES = test_group.c ../nss/group.c $(common_SOURCES)
-test_hosts_SOURCES = test_hosts.c ../nss/hosts.c $(common_SOURCES)
-test_netgroup_SOURCES = test_netgroup.c ../nss/netgroup.c $(common_SOURCES)
-test_networks_SOURCES = test_networks.c ../nss/networks.c $(common_SOURCES)
-test_passwd_SOURCES = test_passwd.c ../nss/passwd.c $(common_SOURCES)
-test_protocols_SOURCES = test_protocols.c ../nss/protocols.c $(common_SOURCES)
-test_rpc_SOURCES = test_rpc.c ../nss/rpc.c $(common_SOURCES)
-test_services_SOURCES = test_services.c ../nss/services.c $(common_SOURCES)
-test_shadow_SOURCES = test_shadow.c ../nss/shadow.c $(common_SOURCES)
+test_attmap_SOURCES = test_attmap.c common.h
+test_attmap_LDADD = ../nslcd/cfg.o $(common_nslcd_LDADD)
 
-test_nslcd_group_SOURCES = test_nslcd_group.c
-test_nslcd_group_LDADD = ../nslcd/log.o ../nslcd/attmap.o ../common/dict.o \
-                         ../nslcd/common.o ../nslcd/myldap.o \
-                         ../nslcd/alias.o ../nslcd/ether.o \
-                         ../nslcd/host.o ../nslcd/netgroup.o ../nslcd/network.o \
-                         ../nslcd/passwd.o ../nslcd/protocol.o ../nslcd/rpc.o \
-                         ../nslcd/service.o ../nslcd/shadow.o \
-                         @nslcd_LIBS@ ../common/libtio.a ../common/libdict.a \
-                         ../compat/libcompat.a ../nslcd/cfg.o
+test_myldap_SOURCES = test_myldap.c common.h
+test_myldap_LDADD = ../nslcd/cfg.o $(common_nslcd_LDADD)
+
+test_common_SOURCES = test_common.c ../nslcd/common.h
+test_common_LDADD = ../nslcd/cfg.o $(common_nslcd_LDADD)
+
+test_clock_SOURCES = test_clock.c
+
+test_tio_timeout_SOURCES = test_tio_timeout.c ../common/tio.h
+
+lookup_netgroup_SOURCES = lookup_netgroup.c
+
+lookup_shadow_SOURCES = lookup_shadow.c
+
+lookup_groupbyuser_SOURCES = lookup_groupbyuser.c

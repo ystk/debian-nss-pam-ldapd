@@ -2,7 +2,7 @@
 
 # test_myldap.sh - simple wrapper test script for test_myldap
 #
-# Copyright (C) 2007 Arthur de Jong
+# Copyright (C) 2007-2014 Arthur de Jong
 #
 # This library is free software; you can redistribute it and/or
 # modify it under the terms of the GNU Lesser General Public
@@ -26,17 +26,18 @@
 set -e
 
 # get LDAP config
-srcdir="${srcdir-"."}"
+srcdir="${srcdir-`dirname "$0"`}"
+builddir="${builddir-`dirname "$0"`}"
 cfgfile="$srcdir/nslcd-test.conf"
 uri=`sed -n 's/^uri *//p' "$cfgfile" | head -n 1`
 base="dc=test,dc=tld"
 
 # try to fetch the base DN (fail with exit 77 to indicate problem)
-ldapsearch -b "$base" -s base -x -H "$uri" > /dev/null 2>&1 || {
-  echo "test_myldap.sh: LDAP server $uri not available for $base"
-  exit 77
-}
-echo "test_myldap.sh: using LDAP server $uri"
+"$srcdir/testenv.sh" check_ldap "$uri" "$base" || exit 77
+
+# fix configuration file permissions for test to pass
+chmod o-rwx "$cfgfile"
 
 # just execute test_myldap
-exec ./test_myldap
+export srcdir
+exec "$builddir/test_myldap"
