@@ -1,0 +1,71 @@
+From: Arthur de Jong <arthur@arthurdejong.org>
+Subject: Avoid signal race condition on start-up
+
+This only restores the signal mask after signal handlers are in place
+and the daemon has completely daemonised to avoid a race condition in
+the start-up phase of nslcd where a signal could be sent to nslcd
+causing it to quit or fail to write information to the parent process.
+
+This also block signals sooner in an attempt to avoid race conditions.
+
+Origin: upstream, http://arthurdejong.org/git/nss-pam-ldapd/commit/?id=1d3b19b1ecd3b10f36e8925e8a752a28e3e74b56
+Origin: upstream, http://arthurdejong.org/git/nss-pam-ldapd/commit/?id=530cc24c83dd5d2d347acb40d64c3ae06a43a293
+Bug-Debian: http://bugs.debian.org/759544
+
+--- a/nslcd/nslcd.c
++++ b/nslcd/nslcd.c
+@@ -648,6 +648,17 @@ int main(int argc, char *argv[])
+ #ifdef HAVE_PTHREAD_TIMEDJOIN_NP
+   struct timespec ts;
+ #endif /* HAVE_PTHREAD_TIMEDJOIN_NP */
++  /* block all these signals so our worker threads won't handle them */
++  sigemptyset(&signalmask);
++  sigaddset(&signalmask, SIGHUP);
++  sigaddset(&signalmask, SIGINT);
++  sigaddset(&signalmask, SIGQUIT);
++  sigaddset(&signalmask, SIGABRT);
++  sigaddset(&signalmask, SIGPIPE);
++  sigaddset(&signalmask, SIGTERM);
++  sigaddset(&signalmask, SIGUSR1);
++  sigaddset(&signalmask, SIGUSR2);
++  pthread_sigmask(SIG_BLOCK, &signalmask, &oldmask);
+   /* close all file descriptors (except stdin/out/err) */
+   daemonize_closefds();
+   /* parse the command line */
+@@ -785,17 +796,6 @@ int main(int argc, char *argv[])
+     }
+     log_log(LOG_DEBUG, "setuid(%d) done", (int)nslcd_cfg->uid);
+   }
+-  /* block all these signals so our worker threads won't handle them */
+-  sigemptyset(&signalmask);
+-  sigaddset(&signalmask, SIGHUP);
+-  sigaddset(&signalmask, SIGINT);
+-  sigaddset(&signalmask, SIGQUIT);
+-  sigaddset(&signalmask, SIGABRT);
+-  sigaddset(&signalmask, SIGPIPE);
+-  sigaddset(&signalmask, SIGTERM);
+-  sigaddset(&signalmask, SIGUSR1);
+-  sigaddset(&signalmask, SIGUSR2);
+-  pthread_sigmask(SIG_BLOCK, &signalmask, &oldmask);
+   /* start worker threads */
+   log_log(LOG_INFO, "accepting connections");
+   nslcd_threads = (pthread_t *)malloc(nslcd_cfg->threads * sizeof(pthread_t));
+@@ -815,8 +815,7 @@ int main(int argc, char *argv[])
+       exit(EXIT_FAILURE);
+     }
+   }
+-  pthread_sigmask(SIG_SETMASK, &oldmask, NULL);
+-  /* install signalhandlers for some signals */
++  /* install signal handlers for some signals */
+   install_sighandler(SIGHUP, sig_handler);
+   install_sighandler(SIGINT, sig_handler);
+   install_sighandler(SIGQUIT, sig_handler);
+@@ -827,6 +826,8 @@ int main(int argc, char *argv[])
+   install_sighandler(SIGUSR2, SIG_IGN);
+   /* signal the starting process to exit because we can provide services now */
+   daemonize_ready(EXIT_SUCCESS, NULL);
++  /* enable receiving of signals */
++  pthread_sigmask(SIG_SETMASK, &oldmask, NULL);
+   /* wait until we received a signal */
+   while ((nslcd_receivedsignal == 0) || (nslcd_receivedsignal == SIGUSR1))
+   {
