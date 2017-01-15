@@ -1,3 +1,11 @@
+nss-pam-ldapd (0.9.4-3+deb8u2) jessie; urgency=medium
+
+  * Non-maintainer upload.
+  * have init script stop action only return when nslcd has actually stopped
+    (Closes: #814881)
+
+ -- Salvatore Bonaccorso <carnil@debian.org>  Wed, 09 Nov 2016 13:48:14 +0100
+
 nss-pam-ldapd (0.9.4-3+deb8u1) stable; urgency=low
 
   * fix-issues-withdaemonising.patch, avoid-signal-race.patch: patches to
